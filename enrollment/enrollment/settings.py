@@ -57,7 +57,7 @@ ASGI_APPLICATION = 'enrollment.asgi.application'  # For asynchronous support
 # CORS settings to allow frontend to communicate
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://<frontend-railway-domain>",
+    "https://your-frontend.up.railway.app",
 ]
 CORS_ALLOW_CREDENTIALS = True  # Enable credentials (cookies)
 
