@@ -58,7 +58,8 @@ ASGI_APPLICATION = 'enrollment.asgi.application'  # For asynchronous support
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "backend-production-7f56.up.railway.app",
-    "frontend-qd0b.onrender.com", 
+    "frontend-qd0b.onrender.com",
+    "enrollment-system-amber.vercel.app/",
 ]
 CORS_ALLOW_CREDENTIALS = True  # Enable credentials (cookies)
 
