@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
 from django.http import FileResponse
 from ..utils.services import StudentExcelService #, BillingExcelService
-from api.models import Student, AcadTermBilling, Grade, Course, Instructor, Enrollment, BillingList, Receipt
+from api.models import Student, AcadTermBilling, Grade, Program, Course, Instructor, Enrollment, BillingList, Receipt
 from ..utils.validators import FileValidator
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -15,6 +15,9 @@ from ..utils.filterer import QuerysetFilter
 import os
 from django.db import transaction, IntegrityError
 import pandas as pd
+from rest_framework import status
+from io import BytesIO
+from django.http import HttpResponse
 
 class StudentExcelAPI(APIView):
     parser_classes = [MultiPartParser]
@@ -377,3 +380,133 @@ class ImportExcelView(APIView):
             return Response({"error": str(e)}, status=400)
         except Exception as e:
             return Response({"error": f"An unexpected error occurred: {str(e)}"}, status=500)
+
+class GenerateStudentExcelView(APIView):
+    """
+    API View to generate an Excel file for students based on year level, semester, section, and program.
+    Separate sheets are created for each unique combination of program, year level, and section, focusing on the request fields.
+    """
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Extract query parameters
+            year_level = request.query_params.get("year_level") or None
+            section = request.query_params.get("section") or None
+            program = request.query_params.get("program") or None
+            academic_year = request.query_params.get("academic_year") or None
+
+            # Generate the Excel file in memory
+            excel_file = self.generate_excel_file(year_level, section, program, academic_year)
+
+            if not excel_file:
+                return Response({"error": "No data found for the given filters."}, status=status.HTTP_404_NOT_FOUND)
+
+            # Return the file as a response, prompting for download
+            response = HttpResponse(excel_file, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            response["Content-Disposition"] = f'attachment; filename="student_data_{year_level or "all"}_{section or "all"}.xlsx"'
+            
+            # Optionally, add success flag in the response headers
+            response["X-Success"] = "True"
+
+            return response
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def generate_excel_file(self, year_level, section, program, academic_year):
+        # Create a new workbook
+        wb = Workbook()
+        # Remove the default sheet
+        wb.remove(wb.active)
+
+        # Filter students based on the query parameters
+        filters = {}
+        if year_level:
+            filters['year_level'] = year_level
+        if section:
+            filters['section'] = section
+        if program:
+            filters['program_id'] = program
+        if academic_year:
+            filters['academic_year'] = academic_year
+
+        # Fetch the students based on the filtered query parameters
+        students = Student.objects.filter(**filters)
+
+        if not students:
+            print(f"No students found for the given filters: {filters}")
+            return None  # Return None if no students are found
+
+        # Loop through students and create a sheet for each combination of program, year_level, and section
+        program_objs = Program.objects.filter(id=program) if program else Program.objects.all()
+
+        for program_obj in program_objs:
+            # Fetch distinct combinations of year_levels and sections for this program
+            student_data = students.filter(**filters).values('year_level', 'section').distinct()
+
+            if not student_data:
+                print(f"No student data found for program {program_obj.id}")
+                continue  # Skip this program if no data
+
+            # Loop through each unique combination of year_level and section
+            for student_info in student_data:
+                year_level = student_info['year_level']
+                section = student_info['section'] or "NA"
+
+                # Create a sheet name based on program, year level, and section
+                sheet_name = f"{program_obj.id} {year_level}-{section}"
+                sheet = wb.create_sheet(title=sheet_name)
+
+                # Set headers for the student data
+                headers = [
+                    "Student ID", "First Name", "Middle Name", "Last Name", "Suffix",
+                    "Email", "Address", "Date of Birth", "Gender", "Contact Number",
+                    "Status", "Section", "Year Level", "Semester", "Academic Year", "Program"
+                ]
+                for col_num, header in enumerate(headers, start=1):
+                    cell = sheet.cell(row=1, column=col_num)
+                    cell.value = header
+                    cell.font = Font(bold=True)
+
+                # Fetch students for this specific year level, section, and program
+                students_for_sheet = students.filter(
+                    program=program_obj, year_level=year_level, section=section
+                )
+
+                if not students_for_sheet:
+                    print(f"No students found for {program_obj.id} {year_level}-{section}")
+                    continue
+
+                # Populate the sheet with student data
+                row = 2
+                for student in students_for_sheet:
+                    sheet.cell(row=row, column=1, value=student.id)
+                    sheet.cell(row=row, column=2, value=student.first_name)
+                    sheet.cell(row=row, column=3, value=student.middle_name)
+                    sheet.cell(row=row, column=4, value=student.last_name)
+                    sheet.cell(row=row, column=5, value=student.suffix)
+                    sheet.cell(row=row, column=6, value=student.email)
+                    address = f"{student.address.street}, {student.address.barangay}, {student.address.city}, {student.address.province}"
+                    sheet.cell(row=row, column=7, value=address)
+                    sheet.cell(row=row, column=8, value=student.date_of_birth)
+                    sheet.cell(row=row, column=9, value=student.gender)
+                    sheet.cell(row=row, column=10, value=student.contact_number)
+                    sheet.cell(row=row, column=11, value=student.status)
+                    sheet.cell(row=row, column=12, value=student.section)
+                    sheet.cell(row=row, column=13, value=student.year_level)
+                    sheet.cell(row=row, column=14, value=student.semester)
+                    sheet.cell(row=row, column=15, value=student.academic_year)
+                    sheet.cell(row=row, column=16, value=student.program.id if student.program else None)
+                    row += 1
+
+                # If no student data (only headers), remove the sheet from the workbook
+                if row == 2:  # No data rows added
+                    wb.remove(sheet)
+                    print(f"Sheet {sheet_name} has no data and was removed.")
+
+        # Save the workbook to a BytesIO object
+        file_stream = BytesIO()
+        wb.save(file_stream)
+        file_stream.seek(0)
+
+        return file_stream

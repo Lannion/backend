@@ -5,6 +5,7 @@ from rest_framework.response import Response
 import re
 from api.models import Student, Grade, Course, Enrollment, EnrollmentDate
 from datetime import datetime
+from django.db.models import Case, When, Value
 
 class LengthValidator:
     @staticmethod
@@ -146,6 +147,7 @@ class EnrollmentValidator:
                 "message": f"Enrollment has not yet begun. It is scheduled from {formatted_from_date} to {formatted_to_date}."
             }
         else:
+
             return {
                 "is_enrollment": False,
                 "message": f"Enrollment has already ended. The period was from {formatted_from_date} to {formatted_to_date}."

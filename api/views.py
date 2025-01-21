@@ -320,10 +320,32 @@ class StudentUserView(BaseUserView):
 class DepartmentUserView(BaseUserView):
     group_name = "department"
 
+
+def update_enrollment_status():
+    try:
+        # Get the current date
+        today = timezone.now().date()
+
+        # Check if the enrollment date has finished
+        enrollment_dates = EnrollmentDate.objects.filter(to_date__lte=today)
+
+        print("Dates: ", enrollment_dates)
+
+        if enrollment_dates.exists():
+            # Update all students' enrollment status to NOT_ENROLLED
+            updated_count = Student.objects.all().update(enrollment_status='NOT_ENROLLED')
+            update_reg_students = Student.objects.filter(status='REGULAR').update(enrollment_status='WAITLISTED')
+            print(f'Successfully updated {updated_count + update_reg_students} students to NOT_ENROLLED.')
+        else:
+            print('No enrollment dates have finished.')
+    except Exception as e:
+        print(f'An error occurred: {e}')
+
 class ProtectedGroupView(APIView):
     permission_classes = None  # Ensure the user is authenticated
 
     def post(self, request, *args, **kwargs):
+        update_enrollment_status()
         user_group = request.user.groups.values_list("name", flat=True).first().lower()
 
         return Response({
@@ -990,7 +1012,8 @@ class BatchEnrollStudentAPIView(APIView):
                 "program": default.course.program.id,
                 "is_edited": default.is_edited,  # Indicates if the default was edited
             }
-            for default in saved_defaults
+            for default in (default_courses if student.status is "REGULAR" else saved_defaults)
+            if not Enrollment.objects.filter(student=student, course=default.course).exists()  # Use the 'id' key
         ]
 
         # Return the data
@@ -1175,8 +1198,9 @@ class DashboardView(APIView):
         total_students = Student.objects.count()
 
         # Dynamic filters for statuses and categories
-        statuses = ["REGULAR", "IRREGULAR", "RETURNEE", "TRANSFEREE"]
+        statuses = ["REGULAR", "IRREGULAR", "TRANSFEREE"]
         categories = ["NEW"]
+        enrollment_statuses = ["ENROLLED", "NOT_ENROLLED", "PENDING_REQUEST", "WAITLISTED"]
 
         # Create a dictionary to hold counts for both statuses and categories
         status_counts = {
@@ -1188,6 +1212,12 @@ class DashboardView(APIView):
         status_counts.update({
             f"{category.lower()}_students": Student.objects.filter(category=category).count()
             for category in categories
+        })
+
+        # Add counts for enrollment status to the same dictionary
+        status_counts.update({
+            f"{enrollment.lower()}_students": Student.objects.filter(enrollment_status=enrollment).count()
+            for enrollment in enrollment_statuses
         })
 
         # Dynamic filters for programs

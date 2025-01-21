@@ -147,14 +147,17 @@ class StudentService:
                 return section
 
         # If no section has room, create a new section
+        new_limit_per_section = sections.first().limit_per_section if sections.exists() else 30  # Default limit
         new_section = Sectioning.objects.create(
-            limit_per_section=sections.first().limit_per_section if sections.exists() else 30,  # Default limit
+            limit_per_section=new_limit_per_section,
             year_level=year_level,
             program=program
         )
 
+        # Optionally assign the new section to the student
         # student.section = new_section
         # student.save()
+        
         return new_section
 
 class EnrollmentService:
@@ -259,7 +262,7 @@ class EnrollmentService:
             if student.status == "REGULAR":
                 if course.year_level == next_year_level and course.semester == next_semester:
                     EnrollmentService.add_to_default(course, default_courses, next_year_level, next_semester)
-                    EnrollmentService.add_course(course, default_courses)
+                    # EnrollmentService.add_course(course, default_courses)
                 elif not Grade.objects.filter(student=student, course=course).exists():
                     # Include courses with no grades even if below next year level/semester
                     EnrollmentService.add_to_default(course, default_courses, next_year_level, next_semester)
@@ -267,7 +270,7 @@ class EnrollmentService:
                     # Default courses must be equal or lower than next_year_level and next_semester
                     EnrollmentService.add_to_default(course, default_courses, next_year_level, next_semester)
                 else:
-                    EnrollmentService.add_course(course, eligible_courses)
+                    EnrollmentService.add_to_default(course, default_courses, next_year_level, next_semester)
                 continue
 
             # Handle NON-REGULAR students: Check for unmet prerequisites

@@ -16,7 +16,7 @@ class BaseSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         
         # Remove unwanted fields
-        excluded_fields = ['deleted', 'created_at']
+        excluded_fields = ['deleted', 'created_at', 'updated_at']
         for field in excluded_fields:
             representation.pop(field, None)  # Safely remove the field if it exists
         return representation

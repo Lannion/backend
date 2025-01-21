@@ -39,12 +39,11 @@ urlpatterns = [
 
     # Officers Accessible Data's
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
+    
 
     # Excel
-    path('excel/student/', StudentExcelAPI.as_view(), name='student_excel'),
+    path('excel/student/', GenerateStudentExcelView.as_view(), name='excel_student'),
     path('excel/import/', ImportExcelView.as_view(), name='import_excel'),
-    # path('excel/billing/', BillingExcelAPI.as_view(), name='billing_excel'),
-    path('excel/cor/<int:student_id>/', GenerateCORAPI.as_view(), name='generate_cor'),
 
     # Forgot Password
     path('password_reset/', PasswordResetRequestView.as_view(), name='password_reset'),

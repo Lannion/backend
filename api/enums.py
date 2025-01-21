@@ -15,8 +15,7 @@ class STUDENT_CATEGORY(models.TextChoices):
 class STUDENT_REG_STATUS(models.TextChoices):
     REGULAR = 'REGULAR'
     IRREGULAR = 'IRREGULAR'
-    TRANFEREE = 'TRANFEREE'
-    RETURNEE = 'RETURNEE'
+    TRANSFEREE = 'TRANSFEREE'
 
 # for Schedule.category
 class LAB_OR_LEC(models.TextChoices):
