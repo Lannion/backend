@@ -1012,7 +1012,7 @@ class BatchEnrollStudentAPIView(APIView):
                 "program": default.course.program.id,
                 "is_edited": default.is_edited,  # Indicates if the default was edited
             }
-            for default in (default_courses if student.status is "REGULAR" else saved_defaults)
+            for default in (default_courses if student.status == "REGULAR" else saved_defaults)
             if not Enrollment.objects.filter(student=student, course=default.course).exists()  # Use the 'id' key
         ]
 
@@ -1159,6 +1159,11 @@ class BatchEnrollStudentAPIView(APIView):
                 student.enrollment_status = "ENROLLED"
                 print(StudentService.set_section(student)) 
                 student.save()
+                
+                # Step 6: Delete default courses if enrollment is successful
+                defautl_on_students = DefaultCourses.objects.filter(student=student)
+                if defautl_on_students.exists():
+                    defautl_on_students.delete() # Delete default courses after successful enrollment
 
             # Success response
             return Response(

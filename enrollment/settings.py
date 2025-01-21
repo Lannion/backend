@@ -50,6 +50,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'Enrollment.middleware.ReactMiddleware',
 ]
 
 ASGI_APPLICATION = 'enrollment.asgi.application'  # For asynchronous support
@@ -57,6 +58,7 @@ ASGI_APPLICATION = 'enrollment.asgi.application'  # For asynchronous support
 # CORS settings to allow frontend to communicate
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    'your-frontend.up.railway.app',  
 ]
 CORS_ALLOW_CREDENTIALS = True  # Enable credentials (cookies)
 
@@ -93,7 +95,7 @@ ROOT_URLCONF = 'enrollment.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'Frontend/src'],  # Modify this path if needed
+        'DIRS': [os.path.join(BASE_DIR, '../Frontend/build')],  # Path to React build files
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -106,9 +108,12 @@ TEMPLATES = [
     },
 ]
 
+STATICFILES_DIRS = [os.path.join(BASE_DIR, '../Frontend/build/static')]
+
 WSGI_APPLICATION = 'enrollment.wsgi.application'
 
 # Database settings
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -117,6 +122,11 @@ DATABASES = {
         'HOST': os.environ.get('DB_HOST'),
         'PASSWORD': os.environ.get('DB_PASS'),
         'PORT': os.environ.get('DB_PORT'),
+        'OPTIONS': {
+            'ssl': {
+                'ca': os.path.join(BASE_DIR, os.environ.get('DB_SSL_CA')),
+            },
+        },
     }
 }
 
@@ -132,7 +142,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -182,6 +191,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 
 # Email settings for sending reset emails
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

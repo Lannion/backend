@@ -70,20 +70,7 @@ class Searchable(BaseAdmin):
 
 
 class StudentAdmin(Searchable, BaseAdmin):
-    @admin.display(description="Name")
-    def upper_case_name(self, obj):
-        return f"{obj.last_name} {obj.suffix or ''}, {obj.first_name} {obj.middle_name or ''}".upper()
-
-    @admin.display(description="Year Level & Section")
-    def year_section(self, obj):
-        return f"{obj.program.id} {obj.year_level} - {obj.section or 'TBA'}"
-    
-    @admin.display(description="Full Address")
-    def full_address(self, obj):
-        return f"{obj.address.street or ''} {obj.address.barangay or ''} {obj.address.city} {obj.address.province}"
-
-    list_display = ["id", upper_case_name, year_section, full_address]
-
+    list_display = ["id", "last_name", "first_name", "year_level", "section", "address", "contact_number", "email",]
 
 class EnrollmentAdmin(Searchable, BaseAdmin):
     list_display = ["id", "student_id", "course__code", "year_level_taken", "semester_taken", "status", "school_year"]
@@ -139,7 +126,7 @@ class ProgramAdmin(Searchable, BaseAdmin):
     list_display = ["id", "__str__", "description"]
 
 
-# admin.site.register(Address, AddressAdmin)
+admin.site.register(Address, Searchable)
 admin.site.register(Student, StudentAdmin)
 admin.site.register(Instructor, InstructorAdmin)
 admin.site.register(Course, CourseAdmin)

@@ -19,42 +19,9 @@ class Command(BaseCommand):
         self.run()
 
     def run(self):
-        fake = Faker()
-
         # Define courses for BSCS and BSIT
         bscs_courses = self.get_bscs_courses()
         bsit_courses = self.get_bsit_courses()
-
-        # Create addresses before students
-        self.create_fake_addresses()
-
-        addresses = Address.objects.all()
-        num_instructors = 25  # Adjust the number of instructors you want
-
-        for _ in range(num_instructors):
-            # Randomly select an address from the existing addresses
-            address = choice(addresses) if addresses else None
-
-            # Randomly assign gender from the choices available in STUDENT_GENDER
-            gender = choice([choice[0] for choice in STUDENT_GENDER.choices])
-
-            # Create a random Filipino contact number starting with +63 and 9 digits
-            contact_number = "+63" + str(fake.random_number(digits=9))
-
-            # Create an instructor instance
-            instructor = Instructor.objects.create(
-                first_name=fake.first_name(),
-                last_name=fake.last_name(),
-                middle_name=fake.last_name(),  # You can randomly generate middle names if needed
-                suffix=fake.suffix(),  # Generate a random suffix if needed
-                gender=gender,
-                email=fake.email(),
-                contact_number=contact_number,
-                address=address,  # Assign a random address from the Address model
-            )
-
-        # Output success message
-        self.stdout.write(self.style.SUCCESS(f'Instructor "{instructor.first_name} {instructor.last_name}" created.'))
 
         # Define programs
         programs = [
@@ -106,248 +73,34 @@ class Command(BaseCommand):
             group_objects[group_name] = group
             if created:
                 self.stdout.write(self.style.SUCCESS(f'Group "{group_name}" created.'))
-
-        # Seed users
-        num_students = 10
-        num_department = 5
-        num_admins = 2
-        num_registrars = 2
-
-        # Create sample students using Faker
-        students = []
-        year = datetime.strptime("2024-12-01", "%Y-%m-%d").year
-        addresses = Address.objects.all()
-        program_bscs = Program.objects.get(id="BSCS")  # Fetch the BSCS program instance
-        program_bsit = Program.objects.get(id="BSIT")  # Fetch the BSIT program instance
-
-        for i in range(1, num_students + 1):
-            year_of_birth = random.randint(1980, 2003)
-            month_of_birth = random.randint(1, 12)
-            day_of_birth = random.randint(1, 28)
-            date_of_birth = f"{year_of_birth}-{month_of_birth:02d}-{day_of_birth:02d}"
-
-            unique = False
-            while not unique:
-                program_suffix = random.choice(["10", "11"])
-                student_id = int(str(random.randint(2020, year)) + program_suffix + str(random.randint(100, 999)))
-                email = fake.email()
-
-                if not Student.objects.filter(id=student_id, email=email).exists():
-                    unique = True
-
-            year_level = random.randint(1, 4)
-            semester = random.randint(1, 2)
-            category = "NEW" if year_level == 1 else "OLD"
-
-            # Assign the correct program instance based on the student ID
-            if str(student_id)[4:6] == "10":
-                program = program_bsit  # Assign the BSIT program instance
-            else:
-                program = program_bscs  # Assign the BSCS program instance
-
-            acad_year = random.randint(2020, 2025)
-
-            student_instance = Student.objects.create(
-                id=student_id,
-                email=email,
-                first_name=fake.first_name(),
-                last_name=fake.last_name(),
-                middle_name=fake.last_name(),
-                address=random.choice(addresses),  # Randomly choose from available addresses
-                date_of_birth=date_of_birth,
-                gender=random.choice([choice[0] for choice in STUDENT_GENDER.choices]),
-                contact_number = "+63" + str(fake.random_number(digits=9)),
-                status=random.choice([choice[0] for choice in STUDENT_REG_STATUS.choices]),
-                section=random.randint(1, 5),
-                year_level=year_level,
-                academic_year=f'{acad_year}-{acad_year+1}',
-                category=category,
-                program=program,  # Use the actual Program instance
-                semester=semester,
-                enrollment_status = random.choice([choice[0] for choice in ENROLLMENT_STATUS.choices]),
-            )
-            students.append(student_instance)
-
-
-        # Create Students in User table
-        for student in students:
-            user = User.objects.create_user(
-                username=student.id,
-                email=student.email,
-                password=fake.password(),
-                first_name=student.first_name,
-                last_name=student.last_name,
-            )
-            user.groups.add(group_objects['Student'])
-
-            self.stdout.write(self.style.SUCCESS(f'Student "{user.username}" created and added to the Student group.'))
-
-        # Create Instructors
-        for _ in range(num_department):
-            user = User.objects.create_user(
-                username=fake.user_name(),
-                email=fake.email(),
-                password=fake.password(),
-                first_name=fake.first_name(),
-                last_name=fake.last_name(),
-            )
-            user.groups.add(group_objects['Department'])
-
-            self.stdout.write(self.style.SUCCESS(f'Department "{user.username}" created and added to the Department group.'))
-
-        # Create Admins
-        for _ in range(num_admins):
-            user = User.objects.create_user(
-                username=fake.user_name(),
-                email=fake.email(),
-                password=fake.password(),
-                first_name=fake.first_name(),
-                last_name=fake.last_name(),
-            )
-            user.groups.add(group_objects['Admin'])
-
-            self.stdout.write(self.style.SUCCESS(f'Admin "{user.username}" created and added to the Admin group.'))
-
-        # Create Registrars
-        for _ in range(num_registrars):
-            user = User.objects.create_user(
-                username=fake.user_name(),
-                email=fake.email(),
-                password=fake.password(),
-                first_name=fake.first_name(),
-                last_name=fake.last_name(),
-            )
-            user.groups.add(group_objects['Registrar'])
-
-            self.stdout.write(self.style.SUCCESS(f'Registrar "{user.username}" created and added to the Registrar group.'))
         
-        # Preparing instances for enrollment
-        students = Student.objects.all()
-        courses = Course.objects.all()
-
-        if not students.exists():
-            self.stdout.write(self.style.WARNING("No students found! Please seed students first."))
-            return
-
-        if not courses.exists():
-            self.stdout.write(self.style.WARNING("No courses found! Please seed courses first."))
-            return
-
-        enrollments = []
-
-        for student in students:
-            # Get the student's curriculum based on their program and year level
-            curriculum_courses = Course.objects.filter(program=student.program, year_level=student.year_level)
-
-            # Track whether the student has followed the curriculum
-            curriculum_followed = True
-
-            # Loop through courses in the curriculum
-            for course in curriculum_courses:
-                # Randomly assign a past or current semester and school year
-                semester_taken = random.randint(1, 2)
-                school_year = f"{random.randint(2020, 2023)}-{random.randint(2021, 2024)}"
-
-                # Check if this course is already enrolled
-                existing_enrollment = Enrollment.objects.filter(course=course, student=student).exists()
-                if not existing_enrollment:
-                    # Enroll the student
-                    enrollments.append(
-                        Enrollment(
-                            course=course,
-                            student=student,
-                            status="ENROLLED",  # Adjust if there are other statuses
-                            year_level_taken=student.year_level,
-                            semester_taken=student.semester,
-                            school_year=student.academic_year,
-                        )
-                    )
-                else:
-                    curriculum_followed = False  # Mark as irregular if not all courses were enrolled
-
-            # Update student's status based on curriculum adherence
-            student.status = STUDENT_REG_STATUS.REGULAR if curriculum_followed else STUDENT_REG_STATUS.IRREGULAR
-            student.save()
-
-            self.stdout.write(self.style.SUCCESS(
-                f"Enrollments created for Student {student.id}. Status: {student.status}"
-            ))
-
-        # Bulk create enrollments to improve performance
-        Enrollment.objects.bulk_create(enrollments)
-
-        self.stdout.write(self.style.SUCCESS(f"Successfully created {len(enrollments)} enrollments."))
-        
+        # Create billings
         self.create_billing()
 
-        # Example where create_billing is invoked
-        for student in students:
-            year_level = student.year_level
-            semester = student.semester
-            school_year = student.academic_year  # Use student's academic year or assign it as needed
+        # Create enrollment dates
+        self.create_enrollment_dates()
 
-            # Call create_billing with the required arguments
-            self.create_billing_entry(student, year_level, semester, school_year)
+    def create_enrollment_dates(self):
+        """
+        Create enrollment dates for the current school year for all programs.
+        """
+        # Get the current year
+        current_year = datetime.now().year
 
-        # Create sample grades
-        instructors = Instructor.objects.all()
+        # Define the enrollment date range
+        from_date = datetime(current_year, 6, 1).date()
+        to_date = datetime(current_year, 6, 30).date()
 
-        for student in students:
-            # Get the enrolled courses for the student
-            enrolled_courses = Enrollment.objects.filter(student=student).values_list('course', flat=True)
-
-            # Generate grades for enrolled courses only
-            for course in Course.objects.filter(id__in=enrolled_courses):
-                grade = "S" if course.code == "CvSU 101" or course.code == "ORNT 1" else random.choice([
-                    "1.00", "1.25", "1.50", "1.75", "2.00", "2.25", "2.50", "2.75", "3.00", "4", "5"
-                ])
-
-                remarks = self.determine_remarks(grade)
-
-                Grade.objects.create(
-                    student=student,
-                    course=course,
-                    grade=grade,
-                    instructor=random.choice(instructors),
-                    remarks=remarks
-                )
-
-        self.stdout.write(self.style.SUCCESS("Grades have been successfully created for enrolled students."))
-
-
-    def create_fake_addresses(self, num_addresses=10):
-        fake = Faker()
-
-        for _ in range(num_addresses):
-            street = fake.street_address()
-            barangay = fake.word()
-            city = fake.city()
-            province = fake.state()
-
-            # Print the generated fake data
-            self.stdout.write(self.style.SUCCESS(f"Street: {street}, Barangay: {barangay}, City: {city}, Province: {province}"))
-
-            # Create the address in the database
-            Address.objects.create(
-                street=street,
-                barangay=barangay,
-                city=city,
-                province=province,
+        # Create or get enrollment dates for each program
+        for program in Program.objects.all():
+            EnrollmentDate.objects.get_or_create(
+                program=program,
+                from_date=from_date,
+                to_date=to_date,
+                defaults={
+                    "deleted": False,
+                }
             )
-
-
-    def determine_remarks(self, grade):
-        if grade in ["1.00", "1.25", "1.50", "1.75", "2.00", "2.25", "2.50", "2.75", "3.00", "S"]:
-            return GRADE_REMARKS.PASSED
-        elif grade == "4":
-            return GRADE_REMARKS.CONDITIONAL_FAILURE
-        elif grade == "5":
-            return GRADE_REMARKS.FAILED
-        elif grade == "INC":
-            return GRADE_REMARKS.INCOMPLETE
-        elif grade == "DRP":
-            return GRADE_REMARKS.DROPPED_SUBJECT
-        return GRADE_REMARKS.NOT_GRADED_YET
 
     def create_billing(self):
         """
