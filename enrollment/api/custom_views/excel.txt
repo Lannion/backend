@@ -1,0 +1,19 @@
+# import sa main views.py file: import StudentExcelAPI, BillingExcelAPI, create_checklist_excel
+# Add API views for Student and Billing Excel.
+    example:
+        student_excel_api = StudentExcelAPI.as_view()
+        billing_excel_api = BillingExcelAPI.as_view()
+# passing the parameters to the main functions that will use Excel
+    sample in checklist:
+        @api_view(["GET"])
+        def generate_checklist(request, student_id):
+            try:
+                response = create_checklist_excel(student_id)
+                return response
+            except ValueError as e:
+                return JsonResponse({"error": str(e)}, status=400)  
+
+
+
+
+# Sa excel format need ng static image file para po don > code line 87 sa excel_views.py
