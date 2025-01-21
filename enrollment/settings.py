@@ -50,7 +50,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'Enrollment.middleware.ReactMiddleware',
 ]
 
 ASGI_APPLICATION = 'enrollment.asgi.application'  # For asynchronous support
